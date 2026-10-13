@@ -1,0 +1,14 @@
+{
+  "app": "DemoEHR",
+  "window_title": "Patient Summary - TEST PATIENT (masked)",
+  "ax_available": true,
+  "elements": [
+    {"role": "AXStaticText", "label": "Patient Name", "bounds": [40, 60, 220, 20], "value": "TEST, PATIENT"},
+    {"role": "AXStaticText", "label": "MRN", "bounds": [40, 90, 220, 20], "value": "MASKED-0001"},
+    {"role": "AXStaticText", "label": "DOB", "bounds": [40, 120, 220, 20], "value": "1990-01-01"},
+    {"role": "AXButton", "label": "Problem List", "bounds": [300, 60, 120, 28], "enabled": true},
+    {"role": "AXButton", "label": "Labs", "bounds": [300, 100, 120, 28], "enabled": true},
+    {"role": "AXStaticText", "label": "Problem 1", "bounds": [300, 140, 400, 20], "value": "Hypertension"},
+    {"role": "AXStaticText", "label": "Lab A1c", "bounds": [300, 170, 400, 20], "value": "6.4 %"}
+  ]
+}
