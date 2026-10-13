@@ -63,6 +63,23 @@ or a virtual display. The framework runs the same in any of those. For an RDP or
 Citrix EHR this is the recommended setup: the remote window lives in its own VM
 or session, and the automation drives it there.
 
+## DOM browser control (CDP)
+
+For web apps, the framework talks to Chrome's DevTools Protocol directly, so it
+acts on the page's real element tree rather than pixels -- the most reliable and
+fastest web path, the open-source equal of what Codex does with Playwright. Proven
+live: connected to a real web EHR, read 25 patient rows and a patient name straight
+from the DOM. Standard library only.
+
+Launch Chrome once with remote debugging, then use `engine/browser_cdp.py`:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --remote-debugging-port=9222 --user-data-dir=/tmp/uia-chrome
+```
+
+See ROADMAP.md for the full feature plan derived from the Codex teardown.
+
 ## The vision path (works without local elements)
 
 For screens with no accessibility tree -- a remote desktop (RDP/Citrix), a canvas
