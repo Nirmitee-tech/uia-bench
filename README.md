@@ -7,6 +7,22 @@ us with numbers where the approach holds and where it breaks, before we build th
 full system or point it at a real EHR.
 
 
+## What this is
+
+A generic integration platform: the API for software that has no API. Teach it
+any application's screen once, and it exposes that workflow as a callable API. Any
+system a person can operate -- a legacy ERP, a bank or insurer portal, a
+government site, a logistics tool, a CRM, an old terminal app -- becomes
+integrable, with no cooperation from the vendor.
+
+The core is domain-neutral. It captures a screen, acts on it, learns a flow,
+replays it with no model, heals it on change, exposes it as an API, and measures
+its own reliability. Nothing in the core knows about any industry.
+
+Domains are applications on top. Healthcare is the first: a pack that maps flow
+output to FHIR and redacts patient data, with EHR flow libraries. Finance,
+logistics, and others plug in the same way. Platform first, applications on top.
+
 ## 60-second quickstart
 
 ```bash

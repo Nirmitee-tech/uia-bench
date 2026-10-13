@@ -1,5 +1,20 @@
 # Roadmap: best-in-class, from the Codex teardown
 
+## Platform, then applications
+
+This is a generic integration platform first. The core is domain-neutral:
+capture, act, learn, replay, heal, flow-as-API, policy, trace, measure. Domain
+features are applications on top, kept out of the core:
+
+- Core (open, generic): everything in `engine/` and the suite.
+- Application packs (on top): healthcare (FHIR mapping, PHI redaction, EHR flow
+  libraries) is the first; finance, logistics, and others follow the same shape.
+
+Keeping the core domain-neutral is a design rule: a healthcare term never enters
+`engine/`. That is what makes the platform reusable and the open-source story
+broad, with healthcare as the first commercial application rather than the scope.
+
+
 Goal: the open-source computer-and-browser-use framework people reach for first.
 This roadmap is derived from reverse-engineering Codex Computer Use (the shipped
 JavaScript, its API docs, and the native binary), so every item is a real feature
