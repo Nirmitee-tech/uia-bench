@@ -39,6 +39,30 @@ changes. That record / replay / heal loop is the production path and the moat.
 - `uia.py` is the CLI: bench, scan, drivers, learn, replay.
 - `bench.py` runs nine test classes green, including a real parser-guard test.
 
+## Full input control and not disturbing your workflow
+
+The executor drives any application's keyboard and mouse. Verbs: move, click,
+rclick (right), dclick (double), drag, scroll, type, and key with modifier chords
+(e.g. `a+cmd` for select-all, `Return`, `Tab`, arrows). All through real CGEvent.
+
+Two delivery modes:
+
+- Foreground (default): events go to the shared input stream and drive whatever
+  is frontmost, exactly like a person. Simple and universal.
+- Background (`MacosAdapter(background=True)`, CLI `--bg`): events are delivered
+  to the target app's process with CGEventPostToPid. The app receives the input
+  without the hardware cursor moving and without stealing your focus. Proven: text
+  typed into a background TextEdit while Chrome stayed frontmost.
+
+Honest limit on isolation: background mode avoids moving your cursor and taking
+focus, and works for most Cocoa apps. It is not perfect isolation -- some apps
+only accept input when active, and a shared global shortcut can still fire. For a
+hard guarantee that automation never touches your live session, run the target in
+a separate space: a second macOS user (launchctl asuser), a VM (UTM/Parallels),
+or a virtual display. The framework runs the same in any of those. For an RDP or
+Citrix EHR this is the recommended setup: the remote window lives in its own VM
+or session, and the automation drives it there.
+
 ## The vision path (works without local elements)
 
 For screens with no accessibility tree -- a remote desktop (RDP/Citrix), a canvas

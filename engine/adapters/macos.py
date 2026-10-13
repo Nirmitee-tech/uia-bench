@@ -23,8 +23,12 @@ SKYSHOT_BIN = "native/skyshot/skyshot"
 
 
 class MacosAdapter:
-    def __init__(self, binary: str = SKYSHOT_BIN):
+    def __init__(self, binary: str = SKYSHOT_BIN, background: bool = False):
         self.binary = binary
+        # background=True delivers input to the target app's process, so it does
+        # not move the hardware cursor or steal the user's focus. See the README
+        # isolation note for its limits and full-isolation options.
+        self.background = background
 
     def capture(self, app: str, window_title: str) -> Skyshot:
         proc = subprocess.run([self.binary, app], capture_output=True, text=True)
@@ -43,7 +47,8 @@ class MacosAdapter:
                        window_bounds=tuple(wb) if wb else None)
 
     def _act(self, app: str, *args: str):
-        proc = subprocess.run([self.binary, "act", app, *args],
+        prefix = ["--bg"] if self.background else []
+        proc = subprocess.run([self.binary, "act", app, *prefix, *args],
                               capture_output=True, text=True)
         if proc.returncode != 0:
             raise ActionError(f"act failed: {proc.stderr.strip()}")
