@@ -1,15 +1,15 @@
-"""macOS adapter: real skyshots from a live window via the Swift `skyshot` CLI.
+"""macOS adapter: real skyshots and real input via the Swift `skyshot` CLI.
 
 Capture shells out to the compiled native/skyshot binary and parses its JSON
-into the same Skyshot the fixture adapter returns. Action apply is a stub here:
-wiring CGEvent clicks is the next build step, gated behind the perception and
-grounding numbers the suite produces against real apps. We do not click a live
-app until the suite shows we can see it correctly.
+into the same Skyshot the fixture adapter returns. Apply resolves a target's
+on-screen center from its bounds and posts a real CGEvent click, keystroke, or
+key press through the binary's `act` command.
 
-This file documents the boundary honestly: today it can SEE a live window
-(read-only), it cannot yet ACT on one. The suite's perception and grounding
-classes run against this adapter the moment the binary is built and permission
-is granted; task/replay/heal stay on the fixture until action apply lands.
+Honest boundary: a `read` action reads the target's accessibility value from the
+current skyshot rather than from pixels, so reads are exact where the tree is
+rich and unavailable where it is not. A click lands at the control's center; on
+a screen with no accessibility tree there is no center to compute, which is the
+vision-only case the suite is built to flag before we rely on it.
 """
 from __future__ import annotations
 
@@ -40,8 +40,36 @@ class MacosAdapter:
         return Skyshot(app=raw["app"], window_title=raw["window_title"],
                        elements=elements, ax_available=raw["ax_available"])
 
+    def _act(self, app: str, *args: str):
+        proc = subprocess.run([self.binary, "act", app, *args],
+                              capture_output=True, text=True)
+        if proc.returncode != 0:
+            raise ActionError(f"act failed: {proc.stderr.strip()}")
+
     def apply(self, action: Action, el: Element, sky: Skyshot):
-        raise ActionError("macOS action apply not wired yet; see module docstring")
+        if action.kind == "read":
+            return el.value
+        if action.kind == "click":
+            cx, cy = el.center
+            self._act(sky.app, "click", str(cx), str(cy))
+            return None
+        if action.kind == "type":
+            # focus the field first, then type into it
+            cx, cy = el.center
+            self._act(sky.app, "click", str(cx), str(cy))
+            self._act(sky.app, "type", action.text or "")
+            return None
+        if action.kind == "press_key":
+            self._act(sky.app, "key", action.text or "36")  # 36 = Return
+            return None
+        raise ActionError(f"unknown action kind: {action.kind}")
 
     def apply_xy(self, action: Action, xy: tuple, sky: Skyshot):
-        raise ActionError("macOS vision-only apply not wired yet")
+        # vision-only fallback: click raw coordinates, no element to verify
+        if action.kind == "click":
+            self._act(sky.app, "click", str(xy[0]), str(xy[1]))
+            return None
+        if action.kind == "type":
+            self._act(sky.app, "type", action.text or "")
+            return None
+        raise ActionError("vision-only read is not supported; no element to read")

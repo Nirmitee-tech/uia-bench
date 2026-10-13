@@ -62,6 +62,75 @@ func walk(_ el: AXUIElement, _ out: inout [[String: Any]], _ depth: Int) {
     }
 }
 
+// --- act: perform one input event -------------------------------------------
+// Usage: skyshot act "App" click <x> <y>
+//        skyshot act "App" type "<text>"
+//        skyshot act "App" key <keycode>
+// Coordinates are global screen points (the center of a control, computed by the
+// caller from the bounds this tool reports). This is the real executor: CGEvent
+// posts synthetic input, the same mechanism Codex's service uses.
+func activate(_ appName: String) {
+    if let app = NSWorkspace.shared.runningApplications.first(where: {
+        $0.localizedName == appName }) {
+        app.activate()
+        usleep(150_000)
+    }
+}
+
+func doClick(_ x: Double, _ y: Double) {
+    let p = CGPoint(x: x, y: y)
+    let src = CGEventSource(stateID: .combinedSessionState)
+    CGEvent(mouseEventSource: src, mouseType: .mouseMoved, mouseCursorPosition: p,
+            mouseButton: .left)?.post(tap: .cghidEventTap)
+    usleep(30_000)
+    CGEvent(mouseEventSource: src, mouseType: .leftMouseDown, mouseCursorPosition: p,
+            mouseButton: .left)?.post(tap: .cghidEventTap)
+    usleep(30_000)
+    CGEvent(mouseEventSource: src, mouseType: .leftMouseUp, mouseCursorPosition: p,
+            mouseButton: .left)?.post(tap: .cghidEventTap)
+}
+
+func doType(_ text: String) {
+    let src = CGEventSource(stateID: .combinedSessionState)
+    for scalar in text.unicodeScalars {
+        var u = UniChar(scalar.value)
+        guard let down = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: true),
+              let up = CGEvent(keyboardEventSource: src, virtualKey: 0, keyDown: false)
+        else { continue }
+        down.keyboardSetUnicodeString(stringLength: 1, unicodeString: &u)
+        up.keyboardSetUnicodeString(stringLength: 1, unicodeString: &u)
+        down.post(tap: .cghidEventTap)
+        up.post(tap: .cghidEventTap)
+        usleep(8_000)
+    }
+}
+
+func doKey(_ code: CGKeyCode) {
+    let src = CGEventSource(stateID: .combinedSessionState)
+    CGEvent(keyboardEventSource: src, virtualKey: code, keyDown: true)?.post(tap: .cghidEventTap)
+    usleep(20_000)
+    CGEvent(keyboardEventSource: src, virtualKey: code, keyDown: false)?.post(tap: .cghidEventTap)
+}
+
+if CommandLine.arguments.count >= 3 && CommandLine.arguments[1] == "act" {
+    let app = CommandLine.arguments[2]
+    activate(app)
+    let verb = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : ""
+    switch verb {
+    case "click" where CommandLine.arguments.count >= 6:
+        doClick(Double(CommandLine.arguments[4]) ?? 0, Double(CommandLine.arguments[5]) ?? 0)
+    case "type" where CommandLine.arguments.count >= 5:
+        doType(CommandLine.arguments[4])
+    case "key" where CommandLine.arguments.count >= 5:
+        doKey(CGKeyCode(UInt16(CommandLine.arguments[4]) ?? 36))  // 36 = Return
+    default:
+        FileHandle.standardError.write("bad act command\n".data(using: .utf8)!)
+        exit(2)
+    }
+    print("{\"ok\":true}")
+    exit(0)
+}
+
 let appName = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : ""
 guard let app = NSWorkspace.shared.runningApplications.first(where: {
     $0.localizedName == appName

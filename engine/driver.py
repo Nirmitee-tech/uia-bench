@@ -51,39 +51,45 @@ class ScriptedDriver:
 
 
 # --- real drivers: same contract, different teacher --------------------------
-# Each is a thin adapter. It turns the skyshot into the model's input, asks the
-# model for one step, and parses the reply back into an Action. None is wired to
-# a live model yet; they are stubs that document the exact integration point, so
-# adding a model is a small, isolated change, not a rewrite.
+# Each is a thin wrapper over the model client. It asks a live model for one step
+# and parses the reply into a validated Action. They differ only in which model
+# config they carry, which is the whole point: the teacher is swappable data, not
+# code. parse_action refuses any control not present in the skyshot, so a model
+# never clicks something that is not on screen.
 
-class ClaudeDriver:
-    """Teacher = Claude via the Chrome extension (browser targets)."""
-    name = "claude"
+class ModelDriver:
+    """A driver backed by any configured model (OpenAI-compatible or Anthropic)."""
 
-    def next_action(self, goal: str, sky: Skyshot, history: list) -> Optional[Action]:
-        raise NotImplementedError(
-            "wire to mcp__claude-in-chrome: send goal + skyshot, parse one action")
-
-
-class CodexDriver:
-    """Teacher = Codex computer-use (desktop and browser targets)."""
-    name = "codex"
+    def __init__(self, name: str, cfg):
+        self.name = name
+        self.cfg = cfg
 
     def next_action(self, goal: str, sky: Skyshot, history: list) -> Optional[Action]:
-        raise NotImplementedError(
-            "wire to Codex computer-use: send goal + skyshot, parse one action")
+        from .llm import call_model, parse_action
+        reply = call_model(self.cfg, goal, sky, history)
+        return parse_action(reply, sky)
 
 
-class LocalVLMDriver:
-    """Teacher = a local vision model, so PHI never leaves the machine."""
-    name = "local-vlm"
+def openai_driver() -> ModelDriver:
+    """Teacher = OpenAI / Codex, or any OpenAI-compatible endpoint via env."""
+    from .llm import openai_cfg
+    return ModelDriver("openai", openai_cfg())
 
-    def __init__(self, endpoint: str):
-        self.endpoint = endpoint
 
-    def next_action(self, goal: str, sky: Skyshot, history: list) -> Optional[Action]:
-        raise NotImplementedError(
-            "wire to a local vision model endpoint: send goal + skyshot, parse one action")
+def anthropic_driver() -> ModelDriver:
+    """Teacher = Claude via the Anthropic API."""
+    from .llm import anthropic_cfg
+    return ModelDriver("anthropic", anthropic_cfg())
+
+
+def local_driver() -> ModelDriver:
+    """Teacher = a local vision model, so no patient data leaves the machine."""
+    from .llm import local_cfg
+    return ModelDriver("local-vlm", local_cfg())
+
+
+DRIVERS = {"openai": openai_driver, "anthropic": anthropic_driver,
+           "local": local_driver}
 
 
 def learn(goal: str, driver: Driver, executor, provider, app: str,

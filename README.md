@@ -26,13 +26,23 @@ changes. That record / replay / heal loop is the production path and the moat.
 - `bench.py` — the seven test classes run green on a deterministic fixture.
 - `scan.py` — runs perception against any live Mac app and reports AX coverage.
 
-## What is not wired yet (stated honestly)
+## What is real today (no stubs)
 
-- Action apply on a live app (CGEvent clicks/keystrokes). The macOS adapter can
-  SEE a window, not yet ACT on it. Gated behind real-app perception/grounding
-  numbers: we do not click a live app until the suite shows we see it correctly.
-- A captured ScreenCaptureKit frame alongside the tree.
-- The model-driven learn phase and the model call for ambiguous heals.
+- `native/skyshot/Skyshot.swift` reads a live AX tree AND performs real input via
+  CGEvent (`act click|type|key`). Confirmed: typed text into TextEdit end to end.
+- `engine/llm.py` is a real model client (stdlib only) speaking OpenAI-compatible
+  chat and Anthropic messages. Point it at OpenAI, Codex, Anthropic, or a local
+  server (Ollama/LM Studio/vLLM) by env. The reply parser refuses any control not
+  on screen, so a model never clicks something that is not there.
+- `engine/driver.py` makes the teacher swappable data, not code: openai /
+  anthropic / local drivers share one contract. The learn loop never names a model.
+- `uia.py` is the CLI: bench, scan, drivers, learn, replay.
+- `bench.py` runs nine test classes green, including a real parser-guard test.
+
+## Still to come
+
+- A captured ScreenCaptureKit frame alongside the tree (vision-only path).
+- Model-driven heal for genuinely ambiguous cases (today's healer is heuristic).
 
 ## The seven test classes and their bars
 

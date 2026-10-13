@@ -201,3 +201,29 @@ def agnostic_learn() -> Result:
 
 
 ALL.append(agnostic_learn)
+
+
+def model_parse() -> Result:
+    """The real model-reply parser validates against the live skyshot.
+
+    No network: we feed canned replies to the same parse_action the drivers use.
+    A valid target becomes an Action; a hallucinated control fails closed. This
+    proves the agnostic driver's safety guard without calling any model.
+    """
+    from engine.llm import parse_action
+    sky = _provider().capture(APP, WIN)
+    good = parse_action('{"kind":"click","target":"Labs"}', sky)
+    done = parse_action('{"kind":"done"}', sky)
+    fenced = parse_action('```json\n{"kind":"read","target":"Lab A1c"}\n```', sky)
+    rejected = False
+    try:
+        parse_action('{"kind":"click","target":"Delete Everything"}', sky)
+    except ValueError:
+        rejected = True
+    ok = (good is not None and good.target_identity == "AXButton::Labs"
+          and done is None and fenced is not None and rejected)
+    return Result("model_parse", "valid parsed, hallucination refused", ok,
+                  "real driver guard: never click a control not on screen")
+
+
+ALL.append(model_parse)
