@@ -177,3 +177,27 @@ def latency() -> Result:
 
 ALL = [perception, grounding, task_success, replay_determinism,
        heal_test, phi_containment, latency]
+
+
+def agnostic_learn() -> Result:
+    """Any driver can teach a flow through the same learn loop, model-agnostic.
+
+    Uses the ScriptedDriver as a stand-in teacher. The learn loop never names a
+    model; swapping in ClaudeDriver or CodexDriver changes only that one object.
+    The recorded flow must then replay with no driver at all.
+    """
+    from engine.driver import ScriptedDriver, learn
+    from engine.recorder import Recording, replay
+
+    adapter = _provider()
+    teacher = ScriptedDriver(TASKS["read_lab_result"])
+    recorded = learn("read the latest lab result", teacher, Executor(adapter),
+                     adapter, APP, WIN)
+    rec = Recording("read_lab_result", APP, WIN, recorded)
+    out = replay(rec, Executor(_provider()), _provider())
+    ok = out == EXPECTED["read_lab_result"] and teacher.name == "scripted"
+    return Result("agnostic_learn", f"taught by '{teacher.name}', replayed model-off",
+                  ok, "any driver teaches; flow replays with no model")
+
+
+ALL.append(agnostic_learn)
