@@ -5,3 +5,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+vault.json
+audit.jsonl
+*.audit.jsonl
+flows/*.out.json

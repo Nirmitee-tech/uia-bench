@@ -5,7 +5,8 @@ re-resolve it from the live skyshot and rewrite the recording. The strategy
 here is deliberately simple and conservative: match on the same role plus the
 closest label (same leading token, or an enabled control of that role when the
 window has exactly one). A real build would call the model for ambiguous cases;
-this stub proves the record -> break -> re-resolve -> re-save loop end to end.
+this heuristic covers the common case and proves the record -> break ->
+re-resolve -> re-save loop end to end; a model handles ambiguous cases.
 
 What this catches: a renamed or moved button whose role and purpose are intact.
 What this does NOT catch: a genuinely different workflow. We return None then,

@@ -43,23 +43,18 @@ class BrowserAdapter:
     """A Skyshot/apply adapter backed by a CDP session (or any object with eval)."""
 
     def __init__(self, session):
-        self.session = session  # engine.browser_cdp.CDPSession, or a compatible stub
+        self.session = session  # engine.browser_cdp.CDPSession, or any object with eval/title/click/type_into/text
 
     def capture(self, app: str = "browser", window_title: str = "") -> Skyshot:
         raw = self.session.eval(_COLLECT) or []
-        elements = []
-        for i, r in enumerate(raw):
-            # identity is the CSS selector; label is the human-visible text
-            elements.append(Element(index=i, role=r["role"], label=r["label"] or r["selector"],
-                                    bounds=tuple(r["bounds"]), value=r.get("value")))
-            # stash the selector as the identity by overriding via a subclass-free trick:
-            # we encode selector into role so identity stays stable and resolvable
-        # rebuild with selector-based identity (role carries the selector)
-        elements = []
-        for i, r in enumerate(raw):
-            elements.append(Element(index=i, role=f"css={r['selector']}",
-                                    label=r["label"] or r["selector"],
-                                    bounds=tuple(r["bounds"]), value=r.get("value")))
+        # role carries the CSS selector (prefixed "css=") so the element identity
+        # is the selector, which is what replay and heal anchor on for a page.
+        elements = [
+            Element(index=i, role=f"css={r['selector']}",
+                    label=r["label"] or r["selector"],
+                    bounds=tuple(r["bounds"]), value=r.get("value"))
+            for i, r in enumerate(raw)
+        ]
         title = self.session.title() if hasattr(self.session, "title") else window_title
         return Skyshot(app=app, window_title=title, elements=elements,
                        ax_available=True)

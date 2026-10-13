@@ -77,14 +77,9 @@ class WindowsAdapter:
         return Skyshot(app=app, window_title=title, elements=elements,
                        ax_available=bool(elements), window_bounds=wb)
 
-    def _find(self, el: Element):
-        auto = self.auto
-        return auto.ControlFromCursor and None  # resolution happens by name below
-
     def apply(self, action: Action, el: Element, sky: Skyshot):
         auto = self.auto
-        # re-resolve the control by name+type at action time
-        ctrl = auto.Control(searchDepth=0)
+        # re-resolve the control by name + type at action time, from the window
         target = None
         root = self._window(sky.app)
 
