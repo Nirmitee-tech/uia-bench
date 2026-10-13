@@ -11,6 +11,7 @@ parameters carry all meaning; the engine knows no domain.
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import os
 import sys
@@ -58,6 +59,16 @@ def handle(msg, flows_dir, target):
     if method == "tools/call":
         params = msg.get("params", {})
         name = params.get("name", "")
+        token = os.environ.get("UIA_API_TOKEN", "")
+        given = (params.get("arguments", {}) or {}).get("token", "")
+        if not token or not hmac.compare_digest(given, token):
+            return {"jsonrpc": "2.0", "id": mid,
+                    "error": {"code": -32001, "message": "missing or bad token"}}
+        allow = os.environ.get("UIA_ALLOW", "")
+        flow_short = name[len("flow."):] if name.startswith("flow.") else name
+        if allow and flow_short not in {a.strip() for a in allow.split(",")}:
+            return {"jsonrpc": "2.0", "id": mid,
+                    "error": {"code": -32002, "message": f"flow not allowlisted: {flow_short}"}}
         if not name.startswith("flow."):
             return {"jsonrpc": "2.0", "id": mid,
                     "error": {"code": -32602, "message": "unknown tool"}}

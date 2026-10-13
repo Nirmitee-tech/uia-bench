@@ -13,6 +13,7 @@ just one caller -- a flow named get-record could read any record in any app.
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -28,6 +29,15 @@ def make_adapter(target: str):
         from engine.adapters.fixture import FixtureAdapter
         return FixtureAdapter(os.environ.get("UIA_FIXTURE", "tests/gold/ehr_patient_summary.json"))
     raise ValueError(f"unknown target: {target}")
+
+
+def _token():
+    return os.environ.get("UIA_API_TOKEN", "")
+
+
+def _allowed(name: str) -> bool:
+    allow = os.environ.get("UIA_ALLOW", "")
+    return True if not allow else name in {a.strip() for a in allow.split(",")}
 
 
 def build_handler(flows_dir: str, target: str):
@@ -46,10 +56,21 @@ def build_handler(flows_dir: str, target: str):
                 return self._send(200, {"flows": names})
             self._send(404, {"error": "not found"})
 
+        def _authed(self):
+            tok = _token()
+            if not tok:
+                return False  # no token configured => refuse, never run open
+            got = self.headers.get("Authorization", "")
+            return got.startswith("Bearer ") and hmac.compare_digest(got[7:], tok)
+
         def do_POST(self):
+            if not self._authed():
+                return self._send(401, {"error": "missing or bad bearer token"})
             if not self.path.startswith("/flows/"):
                 return self._send(404, {"error": "not found"})
             name = self.path[len("/flows/"):]
+            if not _allowed(name):
+                return self._send(403, {"error": f"flow not allowlisted: {name}"})
             path = os.path.join(flows_dir, name + ".json")
             if not os.path.exists(path):
                 return self._send(404, {"error": f"no flow: {name}"})

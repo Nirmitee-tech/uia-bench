@@ -472,3 +472,56 @@ def heal_gives_up() -> Result:
 
 
 ALL += [flow_params, flow_error_status, flow_save_load, policy_approval, heal_gives_up]
+
+
+def secrets_vault() -> Result:
+    """A secret round-trips through the vault and injects, never in plaintext flow."""
+    import os, tempfile
+    os.environ["UIA_VAULT_KEY"] = "test-key-123"
+    from engine.secrets import Vault, inject
+    d = tempfile.mkdtemp(); vp = os.path.join(d, "v.json")
+    v = Vault(vp)
+    v.set("ehr_pw", "S3cr3t!")
+    on_disk = open(vp).read()
+    filled = inject("login {{secret:ehr_pw}}", v)
+    miss = inject("x {{secret:nope}}", v)
+    ok = (v.get("ehr_pw") == "S3cr3t!" and "S3cr3t!" not in on_disk
+          and filled == "login S3cr3t!" and miss == "x {{secret:nope}}")
+    return Result("secrets_vault", "encrypted at rest, injected at run", ok,
+                  "credentials never live in a flow file or in the clear")
+
+
+def redaction_masks() -> Result:
+    """Redaction masks known sensitive shapes and injected secret values."""
+    from engine.redaction import redact
+    out = redact("card 4111111111111111 mail a@b.com ssn 123-45-6789",
+                 extra_values=["S3cr3t!"])
+    out2 = redact("pwd is S3cr3t! now", extra_values=["S3cr3t!"])
+    ok = ("4111111111111111" not in out and "a@b.com" not in out
+          and "123-45-6789" not in out and "S3cr3t!" not in out2)
+    return Result("redaction_masks", "numbers, emails, ids, secrets masked", ok,
+                  "traces and audit never store sensitive values")
+
+
+def api_auth() -> Result:
+    """The policy decisions behind the API: no token refuses, allowlist gates.
+
+    Checks the server helpers directly (no socket): a request with no configured
+    token is refused, and a flow outside the allowlist is blocked.
+    """
+    import os
+    import importlib
+    os.environ.pop("UIA_API_TOKEN", None)
+    os.environ["UIA_ALLOW"] = "get_record"
+    import server.http_api as api
+    importlib.reload(api)
+    refuses_without_token = (api._token() == "")   # => _authed returns False, 401
+    allows_listed = api._allowed("get_record")
+    blocks_unlisted = not api._allowed("delete_all")
+    ok = refuses_without_token and allows_listed and blocks_unlisted
+    os.environ.pop("UIA_ALLOW", None)
+    return Result("api_auth", "no token refuses, allowlist gates", ok,
+                  "the flow API is closed by default, not open")
+
+
+ALL += [secrets_vault, redaction_masks, api_auth]

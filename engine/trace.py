@@ -11,6 +11,8 @@ from __future__ import annotations
 import html
 import json
 import time
+
+from .redaction import redact
 from dataclasses import dataclass, field
 
 
@@ -30,9 +32,12 @@ class Trace:
     name: str
     steps: list = field(default_factory=list)
 
-    def add(self, kind: str, target: str, result="", risk="safe", screenshot=""):
-        self.steps.append(Step(len(self.steps) + 1, kind, str(target),
-                               "" if result is None else str(result), risk, screenshot))
+    def add(self, kind: str, target: str, result="", risk="safe", screenshot="",
+            secrets=None):
+        # redact before storing: a trace must never become a copy of secrets
+        self.steps.append(Step(len(self.steps) + 1, kind, redact(target, secrets),
+                               redact("" if result is None else result, secrets),
+                               risk, screenshot))
 
     def to_json(self, path: str):
         with open(path, "w") as f:

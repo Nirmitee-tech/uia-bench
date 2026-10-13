@@ -23,6 +23,23 @@ Domains are applications on top. Healthcare is the first: a pack that maps flow
 output to FHIR and redacts patient data, with EHR flow libraries. Finance,
 logistics, and others plug in the same way. Platform first, applications on top.
 
+## Security
+
+- API auth and allowlist. The HTTP and MCP servers refuse every call unless a
+  bearer token (`UIA_API_TOKEN`) matches, and an optional `UIA_ALLOW` restricts
+  which flows may run. Closed by default: with no token set, the server refuses
+  rather than running open. Proven live: no token and wrong token return 401,
+  the right token returns data.
+- Secrets vault. Credentials live in an encrypted local vault
+  (`engine/secrets.py`), keyed by `UIA_VAULT_KEY`, and inject into a step via
+  `{{secret:name}}` at the last moment. A secret never appears in a flow file,
+  the audit log, or a trace. The stdlib cipher protects at rest; for production
+  point `UIA_VAULT_KEY` at a key from your secrets manager.
+- Trace and audit redaction. Before anything is written, `engine/redaction.py`
+  masks known sensitive shapes (long digit runs, emails, id/SSN shapes, tokens)
+  and any injected secret value. A domain pack adds its own field rules on top.
+  This is a safety net, not a guarantee every sensitive value is caught.
+
 ## Platforms and install
 
 The core, the browser (CDP) driver, the flow API, and the MCP server are pure

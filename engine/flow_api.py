@@ -42,7 +42,8 @@ def _fill(text: Optional[str], params: dict) -> Optional[str]:
     return _PARAM.sub(lambda m: str(params.get(m.group(1), m.group(0))), text)
 
 
-def run_flow(recording: Recording, adapter, params: Optional[dict] = None) -> FlowResult:
+def run_flow(recording: Recording, adapter, params: Optional[dict] = None,
+             vault=None) -> FlowResult:
     """Run a flow through an adapter and return the structured result.
 
     One call = one run. The adapter decides the target (fixture, macOS app, or
@@ -54,8 +55,11 @@ def run_flow(recording: Recording, adapter, params: Optional[dict] = None) -> Fl
     reads = []
     try:
         for a in recording.actions:
+            # fill params, then inject secrets last so they never touch params/logs
+            from .secrets import inject
+            text = inject(_fill(a.text, params), vault)
             action = Action(kind=a.kind, target_identity=a.target_identity,
-                            text=_fill(a.text, params), xy=a.xy)
+                            text=text, xy=a.xy)
             sky = adapter.capture(recording.app, recording.window_title)
             out = ex.perform(action, sky)
             if a.kind == "read":

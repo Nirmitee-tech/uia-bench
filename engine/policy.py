@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import json
 import time
+
+from .redaction import redact
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -74,6 +76,9 @@ class PolicyExecutor:
 
     def _audit(self, record: dict):
         record["ts"] = time.time()
+        # audit records what happened, never the sensitive values involved
+        if record.get("target") is not None:
+            record["target"] = redact(record["target"])
         with open(self.audit_path, "a") as f:
             f.write(json.dumps(record) + "\n")
 
