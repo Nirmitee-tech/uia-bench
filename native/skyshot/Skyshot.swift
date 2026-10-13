@@ -147,8 +147,10 @@ if windowRef == nil, let wins = attr(axApp, kAXWindowsAttribute as String) as? [
 
 var elements: [[String: Any]] = []
 var title = ""
+var winBounds: [Double] = [0, 0, 0, 0]
 if let win = windowRef {
     title = str(win as! AXUIElement, kAXTitleAttribute as String) ?? ""
+    winBounds = frame(win as! AXUIElement)
     walk(win as! AXUIElement, &elements, 0)
 }
 
@@ -156,6 +158,7 @@ let payload: [String: Any] = [
     "app": appName,
     "window_title": title,
     "ax_available": !elements.isEmpty,
+    "window_bounds": winBounds,
     "elements": elements,
 ]
 let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])

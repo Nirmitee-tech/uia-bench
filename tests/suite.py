@@ -227,3 +227,27 @@ def model_parse() -> Result:
 
 
 ALL.append(model_parse)
+
+
+def vision_parse() -> Result:
+    """The vision reply parser maps image pixels to a global screen point.
+
+    No network: a canned vision reply plus a known window origin must produce a
+    click at origin + image offset, and a malformed reply must fail closed. This
+    proves the RDP/Citrix path's coordinate math and guard without a model.
+    """
+    from engine.vision import parse_vision_action
+    origin = (100, 200)
+    act = parse_vision_action('{"kind":"click","x":30,"y":40}', origin)
+    done = parse_vision_action('{"kind":"done"}', origin)
+    bad = False
+    try:
+        parse_vision_action('{"kind":"click","x":"left","y":5}', origin)
+    except ValueError:
+        bad = True
+    ok = (act is not None and act.xy == (130, 240) and done is None and bad)
+    return Result("vision_parse", "pixel->global point, bad reply refused", ok,
+                  "RDP/Citrix path: coordinate math and guard")
+
+
+ALL.append(vision_parse)

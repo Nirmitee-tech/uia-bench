@@ -37,8 +37,10 @@ class MacosAdapter:
                     value=r.get("value"))
             for i, r in enumerate(raw["elements"])
         ]
+        wb = raw.get("window_bounds")
         return Skyshot(app=raw["app"], window_title=raw["window_title"],
-                       elements=elements, ax_available=raw["ax_available"])
+                       elements=elements, ax_available=raw["ax_available"],
+                       window_bounds=tuple(wb) if wb else None)
 
     def _act(self, app: str, *args: str):
         proc = subprocess.run([self.binary, "act", app, *args],

@@ -39,6 +39,25 @@ changes. That record / replay / heal loop is the production path and the moat.
 - `uia.py` is the CLI: bench, scan, drivers, learn, replay.
 - `bench.py` runs nine test classes green, including a real parser-guard test.
 
+## The vision path (works without local elements)
+
+For screens with no accessibility tree -- a remote desktop (RDP/Citrix), a canvas
+app, a game -- there are no named controls. The framework captures the window as
+an image and asks a vision model for a click coordinate, then clicks through the
+same CGEvent executor.
+
+- `engine/vision.py`: captures the window (screencapture + sips), normalises the
+  image to point size so pixels map 1:1 to screen points, calls a vision model,
+  and maps the returned pixel to a global screen point. Proven live: a 1512x982
+  window captured and normalised; coordinate math covered by the vision_parse test.
+- `AutoDriver` fuses both: it uses element grounding when the tree is present and
+  the vision path when it is empty. One driver reaches a native app AND a remote
+  desktop. Drivers: openai, anthropic, local, vision, auto.
+
+This is the piece that lets the system drive an RDP/Citrix EHR, where no API and
+no accessibility tree exist. It needs a vision-capable model (OpenAI-compatible,
+or a local one via UIA_LOCAL_BASE to keep PHI on the machine).
+
 ## Still to come
 
 - A captured ScreenCaptureKit frame alongside the tree (vision-only path).

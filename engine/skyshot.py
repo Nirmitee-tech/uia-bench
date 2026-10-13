@@ -45,6 +45,8 @@ class Skyshot:
     elements: list = field(default_factory=list)   # list[Element], indexed
     screenshot_sha256: Optional[str] = None        # proof a frame was captured
     ax_available: bool = True                       # False => vision-only screen
+    window_bounds: Optional[tuple] = None           # (x, y, w, h) of the window, points
+    screenshot_path: Optional[str] = None           # captured frame for the vision path
 
     def by_identity(self, identity: str) -> Optional[Element]:
         for e in self.elements:

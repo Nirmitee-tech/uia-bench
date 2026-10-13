@@ -88,8 +88,61 @@ def local_driver() -> ModelDriver:
     return ModelDriver("local-vlm", local_cfg())
 
 
+class VisionDriver:
+    """Teacher for pixels-only screens: RDP, Citrix, canvas apps, games.
+
+    Captures the window as an image and asks a vision model for a coordinate.
+    Needs the skyshot's window_bounds, which the macOS provider supplies. This is
+    the path that works where no accessibility tree exists -- the exact case a
+    remote-desktop EHR presents.
+    """
+
+    def __init__(self, cfg):
+        self.name = "vision"
+        self.cfg = cfg
+
+    def next_action(self, goal: str, sky: Skyshot, history: list) -> Optional[Action]:
+        from .vision import capture_window, call_vision, parse_vision_action
+        if not sky.window_bounds:
+            raise ValueError("vision path needs window_bounds; none on this skyshot")
+        x, y, w, h = sky.window_bounds
+        path, _ = capture_window(sky.window_bounds)
+        reply = call_vision(self.cfg, goal, path, (int(w), int(h)), history)
+        return parse_vision_action(reply, (x, y))
+
+
+class AutoDriver:
+    """The Codex lesson, fused: use elements when present, vision when not.
+
+    If the skyshot exposes an accessibility tree, grounding on a named control is
+    more reliable, so we use the model driver. If the tree is empty, we fall back
+    to the vision driver. One driver that adapts per screen, which is what makes
+    the same flow reach both a native app and a remote desktop.
+    """
+
+    def __init__(self, element_cfg, vision_cfg):
+        self.name = "auto"
+        self._element = ModelDriver("auto-element", element_cfg)
+        self._vision = VisionDriver(vision_cfg)
+
+    def next_action(self, goal: str, sky: Skyshot, history: list) -> Optional[Action]:
+        if sky.ax_available and sky.elements:
+            return self._element.next_action(goal, sky, history)
+        return self._vision.next_action(goal, sky, history)
+
+
+def vision_driver() -> VisionDriver:
+    from .llm import openai_cfg
+    return VisionDriver(openai_cfg())
+
+
+def auto_driver() -> AutoDriver:
+    from .llm import openai_cfg
+    return AutoDriver(openai_cfg(), openai_cfg())
+
+
 DRIVERS = {"openai": openai_driver, "anthropic": anthropic_driver,
-           "local": local_driver}
+           "local": local_driver, "vision": vision_driver, "auto": auto_driver}
 
 
 def learn(goal: str, driver: Driver, executor, provider, app: str,
