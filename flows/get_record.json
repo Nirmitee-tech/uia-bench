@@ -1,0 +1,19 @@
+{
+  "name": "get_record",
+  "app": "DemoRecords",
+  "window_title": "Patient Summary - TEST PATIENT (masked)",
+  "actions": [
+    {
+      "kind": "read",
+      "target_identity": "AXStaticText::Patient Name",
+      "text": null,
+      "xy": null
+    },
+    {
+      "kind": "read",
+      "target_identity": "AXStaticText::DOB",
+      "text": null,
+      "xy": null
+    }
+  ]
+}

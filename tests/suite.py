@@ -358,3 +358,24 @@ def run_trace() -> Result:
 
 
 ALL += [browser_adapter, policy_gate, run_trace]
+
+
+def flow_as_api() -> Result:
+    """A learned flow runs as a single call and returns structured reads.
+
+    Runs a flow through the fixture adapter via run_flow, with a parameter filled
+    into a step. Proves the platform's core promise: one call to a no-API system
+    returns a clean record. Errors come back as status, not exceptions.
+    """
+    from engine.flow_api import run_flow
+    from engine.recorder import Recording
+    adapter = _provider()
+    rec = Recording("get_record", APP, WIN, TASKS["read_demographics"])
+    res = run_flow(rec, adapter, params={})
+    ok = (res.status == "ok" and res.reads == EXPECTED["read_demographics"]
+          and res.steps == 2)
+    return Result("flow_as_api", f"one call -> {res.reads}", ok,
+                  "a no-API system answers a single call")
+
+
+ALL.append(flow_as_api)

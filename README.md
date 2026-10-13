@@ -23,6 +23,28 @@ Domains are applications on top. Healthcare is the first: a pack that maps flow
 output to FHIR and redacts patient data, with EHR flow libraries. Finance,
 logistics, and others plug in the same way. Platform first, applications on top.
 
+## Flow as API, and as an MCP tool
+
+A learned flow becomes a single call. The engine is generic: a flow is just
+steps, so the same mechanism turns any no-API system into one that answers a call.
+
+Single HTTP API:
+
+```bash
+python3 -m server.http_api --flows ./flows --target macos --port 8077
+curl -s localhost:8077/flows/get_record -d '{"id":"123"}'
+# -> {"name":"get_record","status":"ok","reads":[...],"steps":2}
+```
+
+As an MCP tool (any agent can call it): each saved flow appears as `flow.<name>`.
+
+```bash
+python3 -m server.mcp_server --flows ./flows --target macos
+```
+
+Proven live on the fixture target: tools/list shows the flow, tools/call runs it
+and returns structured reads. Parameters fill `{{placeholders}}` in a flow's steps.
+
 ## 60-second quickstart
 
 ```bash
