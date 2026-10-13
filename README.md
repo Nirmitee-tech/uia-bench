@@ -23,6 +23,29 @@ Domains are applications on top. Healthcare is the first: a pack that maps flow
 output to FHIR and redacts patient data, with EHR flow libraries. Finance,
 logistics, and others plug in the same way. Platform first, applications on top.
 
+## Platforms and install
+
+The core, the browser (CDP) driver, the flow API, and the MCP server are pure
+Python and run on macOS, Windows, and Linux with no extra dependency. Desktop
+control (native app windows) is per-platform:
+
+| Capability | macOS | Windows | Linux |
+|---|---|---|---|
+| Browser control (DOM over CDP) | yes | yes | yes |
+| Flow-as-API + MCP server | yes | yes | yes |
+| Learn / replay / heal / measure | yes | yes | yes |
+| Desktop app control | yes (built in) | yes (`[windows]` extra) | planned |
+| Vision path (screenshot) | yes | planned | planned |
+
+```bash
+pip install nirmitee-control            # core + browser + API + MCP (all platforms)
+pip install nirmitee-control[windows]   # adds the Windows desktop adapter
+```
+
+On Windows the desktop adapter uses Windows UI Automation via the `uiautomation`
+package; the same Skyshot/Action contract, so flows, drivers, and the suite are
+identical across platforms. See PUBLISHING.md to release to PyPI.
+
 ## Flow as API, and as an MCP tool
 
 A learned flow becomes a single call. The engine is generic: a flow is just

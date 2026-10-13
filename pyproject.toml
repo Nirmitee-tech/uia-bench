@@ -1,11 +1,37 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "uia-bench"
+name = "nirmitee-control"
 version = "0.1.0"
-description = "Model-agnostic framework for UI-driven integration: drive any app through its screen, measure it, replay with no model."
+description = "Drive any app or web page through its screen, learn a flow once, replay it with no model, and call it as an API. The integration layer for software with no API."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = "MIT"
+authors = [{ name = "Nirmitee Technologies" }]
+keywords = ["automation", "computer-use", "browser-control", "ui-automation",
+            "integration", "mcp", "rpa", "accessibility", "cdp"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Software Development :: Testing",
+]
 dependencies = []
 
+[project.optional-dependencies]
+windows = ["uiautomation>=2.0"]
+
+[project.urls]
+Homepage = "https://github.com/Nirmitee-tech/uia-bench"
+Source = "https://github.com/Nirmitee-tech/uia-bench"
+
 [project.scripts]
+nirmitee-control = "uia:main"
 uia = "uia:main"
+
+[tool.setuptools]
+packages = ["engine", "engine.adapters", "server"]
+py-modules = ["uia", "bench", "scan"]

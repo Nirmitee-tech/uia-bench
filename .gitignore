@@ -2,3 +2,6 @@ native/skyshot/skyshot
 __pycache__/
 *.pyc
 .DS_Store
+dist/
+build/
+*.egg-info/
