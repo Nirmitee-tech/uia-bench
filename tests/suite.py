@@ -379,3 +379,96 @@ def flow_as_api() -> Result:
 
 
 ALL.append(flow_as_api)
+
+
+def flow_params() -> Result:
+    """Parameters fill {{placeholders}} in a flow before it runs.
+
+    Use-case need: one saved flow serves many inputs (e.g. a record id). Proves
+    {{id}} in a type step is replaced from params, and an unknown placeholder is
+    left intact rather than crashing.
+    """
+    from engine.flow_api import _fill
+    filled = _fill("open record {{id}} now", {"id": "A-42"})
+    kept = _fill("hi {{missing}}", {})
+    ok = (filled == "open record A-42 now" and kept == "hi {{missing}}")
+    return Result("flow_params", "placeholders filled, unknown kept", ok,
+                  "one flow serves many inputs")
+
+
+def flow_error_status() -> Result:
+    """A failing step returns status 'error', never an exception past the API.
+
+    Use-case need: a flow behind an API must give a clean status when a control
+    is missing, not crash the server. Runs a flow whose target is not on screen.
+    """
+    from engine.flow_api import run_flow
+    from engine.recorder import Recording
+    bad = Recording("broken", APP, WIN,
+                    [Action("click", "AXButton::Does Not Exist")])
+    res = run_flow(bad, _provider(), {})
+    ok = (res.status == "error" and res.error and "not found" in res.error.lower())
+    return Result("flow_error_status", f"status={res.status}", ok,
+                  "a missing control returns status, not a crash")
+
+
+def flow_save_load() -> Result:
+    """A flow round-trips to disk and back with identical actions."""
+    import os, tempfile
+    from engine.flow_api import load_flow
+    from engine.recorder import Recording
+    import uia
+    rec = Recording("rt", APP, WIN, TASKS["read_lab_result"])
+    d = tempfile.mkdtemp(); p = os.path.join(d, "rt.json")
+    uia._save(rec, p)
+    back = load_flow(p)
+    ok = (len(back.actions) == len(rec.actions)
+          and back.actions[0].target_identity == rec.actions[0].target_identity
+          and back.name == "rt")
+    return Result("flow_save_load", "round-trips to disk", ok,
+                  "a learned flow persists and reloads exactly")
+
+
+def policy_approval() -> Result:
+    """When the gate approves, a gated action proceeds and is audited approved."""
+    import os, tempfile
+    from engine.policy import PolicyExecutor
+    from engine.actions import Executor
+    adapter = _provider()
+    fd, path = tempfile.mkstemp(suffix=".jsonl"); os.close(fd)
+    pe = PolicyExecutor(Executor(adapter), audit_path=path,
+                        gate=lambda a, r: True, pause_from="transmit")
+    sky = adapter.capture(APP, WIN)
+    # existing control, but context marks it a data-sharing (transmit) action
+    pe.perform(Action("click", "AXButton::Labs"), sky, context="submit and send")
+    import json as _json
+    lines = [ _json.loads(l) for l in open(path) ]
+    ok = any(r.get("decision") == "approved" and r.get("risk") == "transmit"
+             for r in lines)
+    return Result("policy_approval", "approved gated action proceeds + audited", ok,
+                  "the approval path works, not just denial")
+
+
+def heal_gives_up() -> Result:
+    """Heal returns None for a control it cannot honestly re-resolve.
+
+    Use-case need: a self-healing system must not 'recover' by clicking the wrong
+    thing. When the role is gone entirely, heal declines rather than guesses.
+    """
+    from engine.healer import heal
+    from engine.recorder import Recording
+    adapter = _provider()
+
+    def drop_all_buttons(elements):
+        return [e for e in elements if e["role"] != "AXButton"]
+
+    broken = _provider(); broken.add_mutation(drop_all_buttons)
+    sky = broken.capture(APP, WIN)
+    rec = Recording("x", APP, WIN, [Action("click", "AXButton::Labs")])
+    fixed = heal(rec, rec.actions[0], sky)
+    ok = fixed is None
+    return Result("heal_gives_up", "declines rather than mis-click", ok,
+                  "heal never recovers by guessing the wrong control")
+
+
+ALL += [flow_params, flow_error_status, flow_save_load, policy_approval, heal_gives_up]

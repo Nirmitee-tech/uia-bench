@@ -2,13 +2,39 @@ name: ci
 on: [push, pull_request]
 jobs:
   bench:
-    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Build the skyshot binary
+      - name: Build the skyshot binary (macOS only)
+        if: runner.os == 'macOS'
         run: swiftc -O native/skyshot/Skyshot.swift -o native/skyshot/skyshot
-      - name: Run the bench (14 classes)
-        run: python3 bench.py
+      - name: Install the package (with Windows extra on Windows)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then pip install -e ".[windows]"; else pip install -e .; fi
+      - name: Run the bench (cross-platform, fixture-based)
+        run: python bench.py
+      - name: Import the platform desktop adapter
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then python -c "import engine.adapters.windows as w; print('windows adapter import OK')"; fi
+          if [ "$RUNNER_OS" = "macOS" ]; then python -c "import engine.adapters.macos as m; print('macos adapter import OK')"; fi
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build and validate the package
+        run: |
+          pip install build twine
+          python -m build
+          python -m twine check dist/*
