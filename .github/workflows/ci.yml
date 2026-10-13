@@ -1,0 +1,14 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  bench:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build the skyshot binary
+        run: swiftc -O native/skyshot/Skyshot.swift -o native/skyshot/skyshot
+      - name: Run the bench (14 classes)
+        run: python3 bench.py

@@ -273,3 +273,88 @@ def cdp_driver_builds() -> Result:
 
 
 ALL.append(cdp_driver_builds)
+
+
+def browser_adapter() -> Result:
+    """The browser adapter drives a page by selector through the same contract.
+
+    A fake CDP session (no Chrome) proves capture builds selector-identity
+    elements and apply routes click/type/read to the session. The live CDP
+    round-trip is proven separately against a real browser.
+    """
+    from engine.adapters.browser import BrowserAdapter
+
+    class FakeSession:
+        def __init__(self): self.clicked = None; self.typed = None
+        def eval(self, js):
+            return [{"role": "button", "label": "Save claim", "selector": "#save",
+                     "bounds": [0, 0, 80, 30], "value": None}]
+        def title(self): return "Fake EHR"
+        def text(self, sel): return "Hypertension" if sel == "#save" else None
+        def click(self, sel): self.clicked = sel; return sel == "#save"
+        def type_into(self, sel, v): self.typed = (sel, v); return sel == "#save"
+
+    fs = FakeSession()
+    ad = BrowserAdapter(fs)
+    sky = ad.capture()
+    el = sky.elements[0]
+    from engine.actions import Executor
+    ex = Executor(ad)
+    ex.perform(Action("click", el.identity), sky)
+    read = ex.perform(Action("read", el.identity), sky)
+    ok = (el.role == "css=#save" and fs.clicked == "#save" and read == "Hypertension")
+    return Result("browser_adapter", "DOM click+read by selector", ok,
+                  "web page is a first-class adapter on the same contract")
+
+
+def policy_gate() -> Result:
+    """The risk policy classifies and gates actions, and audits every one."""
+    import os
+    import tempfile
+    from engine.policy import classify, PolicyExecutor
+    from engine.actions import Executor
+
+    safe = classify(Action("read", "AXStaticText::DOB")).level
+    writ = classify(Action("type", "AXTextField::Note", text="hi")).level
+    tx = classify(Action("click", "AXButton::Submit claim")).level
+    hand = classify(Action("type", "AXTextField::Password")).level
+
+    adapter = _provider()
+    fd, path = tempfile.mkstemp(suffix=".jsonl"); os.close(fd)
+    pe = PolicyExecutor(Executor(adapter), audit_path=path,
+                        gate=lambda a, r: False, pause_from="transmit")
+    sky = adapter.capture(APP, WIN)
+    denied = False
+    try:
+        pe.perform(Action("read", "AXStaticText::Patient Name"), sky)  # auto ok
+        pe.perform(Action("click", "AXButton::Submit claim"), sky)     # gated, denied
+    except PermissionError:
+        denied = True
+    audited = sum(1 for _ in open(path)) >= 2
+    ok = (safe == "safe" and writ == "write" and tx == "transmit"
+          and hand == "handoff" and denied and audited)
+    return Result("policy_gate", "classify + gate + audit", ok,
+                  "open, auditable safety: pauses on risk, logs every action")
+
+
+def run_trace() -> Result:
+    """A run trace writes a JSON record and an HTML report."""
+    import os
+    import tempfile
+    from engine.trace import Trace
+    t = Trace("read_demographics")
+    t.add("read", "AXStaticText::Patient Name", "TEST, PATIENT")
+    t.add("click", "AXButton::Labs", "", risk="write")
+    d = tempfile.mkdtemp()
+    jp, hp = os.path.join(d, "t.json"), os.path.join(d, "t.html")
+    t.to_json(jp); t.to_html(hp)
+    import json as _json
+    rec = _json.load(open(jp))
+    html = open(hp).read()
+    ok = (len(rec["steps"]) == 2 and "Run trace" in html
+          and "TEST, PATIENT" in html)
+    return Result("run_trace", "JSON + HTML evidence report", ok,
+                  "every run is reviewable after the fact")
+
+
+ALL += [browser_adapter, policy_gate, run_trace]

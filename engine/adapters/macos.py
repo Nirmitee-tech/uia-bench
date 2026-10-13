@@ -23,12 +23,15 @@ SKYSHOT_BIN = "native/skyshot/skyshot"
 
 
 class MacosAdapter:
-    def __init__(self, binary: str = SKYSHOT_BIN, background: bool = False):
+    def __init__(self, binary: str = SKYSHOT_BIN, background: bool = False,
+                 include_screenshot: bool = False):
         self.binary = binary
         # background=True delivers input to the target app's process, so it does
         # not move the hardware cursor or steal the user's focus. See the README
         # isolation note for its limits and full-isolation options.
         self.background = background
+        # fused capture: attach a screenshot to every skyshot when True
+        self.include_screenshot = include_screenshot
 
     def capture(self, app: str, window_title: str) -> Skyshot:
         proc = subprocess.run([self.binary, app], capture_output=True, text=True)
@@ -42,9 +45,16 @@ class MacosAdapter:
             for i, r in enumerate(raw["elements"])
         ]
         wb = raw.get("window_bounds")
-        return Skyshot(app=raw["app"], window_title=raw["window_title"],
-                       elements=elements, ax_available=raw["ax_available"],
-                       window_bounds=tuple(wb) if wb else None)
+        sky = Skyshot(app=raw["app"], window_title=raw["window_title"],
+                      elements=elements, ax_available=raw["ax_available"],
+                      window_bounds=tuple(wb) if wb else None)
+        if self.include_screenshot and wb and wb[2] > 0:
+            # fused capture: tree AND image together, matching Codex's
+            # getAXStateAndScreenshot, so a model can see and read at once
+            from ..vision import capture_window
+            path, sha = capture_window(tuple(wb))
+            sky.screenshot_path, sky.screenshot_sha256 = path, sha
+        return sky
 
     def _act(self, app: str, *args: str):
         prefix = ["--bg"] if self.background else []

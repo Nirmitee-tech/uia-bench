@@ -1,0 +1,11 @@
+[project]
+name = "uia-bench"
+version = "0.1.0"
+description = "Model-agnostic framework for UI-driven integration: drive any app through its screen, measure it, replay with no model."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+uia = "uia:main"

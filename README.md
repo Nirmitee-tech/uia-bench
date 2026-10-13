@@ -6,6 +6,37 @@ Codex Computer Use, not its binary. The harness comes first, on purpose: it tell
 us with numbers where the approach holds and where it breaks, before we build the
 full system or point it at a real EHR.
 
+
+## 60-second quickstart
+
+```bash
+git clone https://github.com/Nirmitee-tech/uia-bench && cd uia-bench
+swiftc -O native/skyshot/Skyshot.swift -o native/skyshot/skyshot   # macOS
+python3 bench.py          # 14 test classes, should be green
+python3 scan.py "Finder"  # read a live app's control tree
+```
+
+Teach a flow with any model, then replay it forever with no model:
+
+```bash
+export OPENAI_API_KEY=...            # or point UIA_LOCAL_BASE at a local model
+python3 uia.py learn "Finder" "open Applications" --driver openai --out flow.json
+python3 uia.py replay flow.json      # no model, deterministic
+```
+
+## Features at a glance
+
+- Drive any app: see the control tree (accessibility), see pixels (vision), and
+  act with the full mouse and keyboard, foreground or background.
+- Drive any web page by its real DOM over Chrome DevTools Protocol. No browser
+  framework dependency.
+- Model-agnostic: OpenAI, Anthropic, a local model, vision, or auto. Swap freely.
+- Learn once, replay with no model, self-heal when a screen changes.
+- Open, auditable action-risk policy with a human-approval gate and an audit log.
+- A run trace: every flow writes a JSON record and an HTML evidence report.
+- A measurement suite: fourteen test classes, including a PHI-containment proof.
+- Standard library only. MIT licensed.
+
 ## Why this exists
 
 Most healthcare value sits behind systems with no API: legacy EHRs, thick
